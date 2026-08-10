@@ -1,10 +1,31 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 
+const USER_AGENT = 'DiscordBot/1.0 (bot discord; anime command)';
+
+async function obtenerImagen(tipo) {
+  const response = await fetch(`https://nekos.best/api/v2/${tipo}`, {
+    headers: { 'User-Agent': USER_AGENT },
+  });
+
+  if (!response.ok) {
+    throw new Error(`La API respondió con estado ${response.status}`);
+  }
+
+  const data = await response.json();
+  const url = data.results?.[0]?.url;
+
+  if (!url) {
+    throw new Error('No se encontró imagen en la respuesta de la API');
+  }
+
+  return url;
+}
+
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('anime')
     .setDescription('Comandos relacionados con anime e interacciones')
-    .addSubcommand(subcommand => 
+    .addSubcommand(subcommand =>
       subcommand
         .setName('interaccion')
         .setDescription('Interactúa con otro usuario')
@@ -19,11 +40,11 @@ module.exports = {
               { name: 'Golpe', value: 'bonk' },
               { name: 'Baile', value: 'dance' }
             ))
-        .addUserOption(option => 
+        .addUserOption(option =>
           option.setName('usuario')
             .setDescription('Usuario con el que interactuar')
             .setRequired(true)))
-    .addSubcommand(subcommand => 
+    .addSubcommand(subcommand =>
       subcommand
         .setName('imagen')
         .setDescription('Obtiene una imagen de anime')
@@ -34,37 +55,43 @@ module.exports = {
             .addChoices(
               { name: 'Waifu', value: 'waifu' },
               { name: 'Neko', value: 'neko' },
-              { name: 'Shinobu', value: 'shinobu' },
-              { name: 'Megumin', value: 'megumin' }
+              { name: 'Husbando', value: 'husbando' },
+              { name: 'Kitsune', value: 'kitsune' }
             ))),
 
   async execute(interaction) {
     const subcommand = interaction.options.getSubcommand();
     const tipo = interaction.options.getString('tipo');
 
-    switch (subcommand) {
-      case 'interaccion':
-        const usuario = interaction.options.getUser('usuario');
-        await manejarInteraccion(interaction, tipo, usuario);
-        break;
-      case 'imagen':
-        await manejarImagen(interaction, tipo);
-        break;
-      default:
-        await interaction.reply('Subcomando no reconocido.');
+    try {
+      switch (subcommand) {
+        case 'interaccion': {
+          const usuario = interaction.options.getUser('usuario');
+          await manejarInteraccion(interaction, tipo, usuario);
+          break;
+        }
+        case 'imagen':
+          await manejarImagen(interaction, tipo);
+          break;
+        default:
+          await interaction.reply('Subcomando no reconocido.');
+      }
+    } catch (error) {
+      console.error(`Error en /anime ${subcommand}:`, error);
+      const mensaje = { content: 'No se pudo obtener la imagen. Intenta de nuevo en un momento.', ephemeral: true };
+      if (interaction.deferred || interaction.replied) {
+        await interaction.editReply(mensaje);
+      } else {
+        await interaction.reply(mensaje);
+      }
     }
   },
 };
 
 async function manejarInteraccion(interaction, tipo, usuario) {
-  const fetchInteraccion = await fetch(`https://api.waifu.pics/sfw/${tipo}`);
-  if (!fetchInteraccion.ok) {
-    return interaction.reply(`La solicitud a la API falló con estado ${fetchInteraccion.status}.`);
-  }
-
-  const datosInteraccion = await fetchInteraccion.json();
+  const imageUrl = await obtenerImagen(tipo);
   const embedInteraccion = new EmbedBuilder()
-    .setImage(datosInteraccion.url)
+    .setImage(imageUrl)
     .setColor("Random")
     .setTimestamp();
 
@@ -99,14 +126,9 @@ async function manejarInteraccion(interaction, tipo, usuario) {
 }
 
 async function manejarImagen(interaction, tipo) {
-  const fetchImagen = await fetch(`https://api.waifu.pics/sfw/${tipo}`);
-  if (!fetchImagen.ok) {
-    return interaction.reply({content: `La solicitud a la API falló con estado ${fetchImagen.status}.`, ephemeral: true});
-  }
-
-  const datosImagen = await fetchImagen.json();
+  const imageUrl = await obtenerImagen(tipo);
   const embedImagen = new EmbedBuilder()
-    .setImage(datosImagen.url)
+    .setImage(imageUrl)
     .setColor("DarkButNotBlack")
     .setTimestamp();
 

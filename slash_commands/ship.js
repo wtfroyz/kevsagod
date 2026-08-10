@@ -41,7 +41,7 @@ module.exports = {
 
             const ship = await new canvafy.Ship()
                 .setAvatars(userAvatar, memberAvatar)
-                .setBackground("image", "https://api.wantimg.xyz/wantporfile.png")
+                .setBackground("color", "#e84393")
                 .setBorder("#f0f0f0")
                 .setOverlayOpacity(0.5)
                 .build();
